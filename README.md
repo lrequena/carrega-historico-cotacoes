@@ -1,0 +1,1 @@
+# carrega-historico-cotacoes
