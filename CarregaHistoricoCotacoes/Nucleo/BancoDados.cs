@@ -35,7 +35,9 @@ namespace CarregaHistoricoCotacoes.Nucleo
                 if (Configuracoes.Sobreescrever)
                 {
                     sql += "IF EXISTS(SELECT 1 FROM COTACAO WHERE IDATIVO = @IDATIVO AND DATA = @DATA)" + Environment.NewLine;
-                    sql += '\t' + "UPDATE COTACAO SET VALOR = @VALOR WHERE IDATIVO = @IDATIVO AND DATA = @DATA";
+                    sql += '\t' + "UPDATE COTACAO SET VALOR = @VALOR WHERE IDATIVO = @IDATIVO AND DATA = @DATA" + Environment.NewLine;
+                    sql += "ELSE" + Environment.NewLine;
+                    sql += '\t' + "INSERT INTO COTACAO(IDATIVO, DATA, VALOR) VALUES(@IDATIVO, @DATA, @VALOR)";
                 }
                 else
                 {

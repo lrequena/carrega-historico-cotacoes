@@ -105,21 +105,10 @@ namespace CarregaHistoricoCotacoes.Nucleo
                 Ativos = ObterConfiguracao<List<int>>(ini, SetorCotacoes, ChaveAtivos);
 
                 DataMinima = ObterConfiguracao<DateTime>(ini, SetorCotacoes, ChaveDataHoraMinima);
-                DataMinima = new DateTime(DataMinima.Year,
-                                             DataMinima.Month,
-                                             DataMinima.Day,
-                                             DataMinima.Hour,
-                                             DataMinima.Minute,
-                                             0);
+                DataMinima = new DateTime(Math.Min(DateTime.UtcNow.Ticks, DataMinima.Ticks));
 
                 DataMaxima = ObterConfiguracao<DateTime>(ini, SetorCotacoes, ChaveDataHoraMaxima);
                 DataMaxima = new DateTime(Math.Min(DateTime.UtcNow.Ticks, DataMaxima.Ticks));
-                DataMaxima = new DateTime(DataMaxima.Year,
-                                          DataMaxima.Month,
-                                          DataMaxima.Day,
-                                          DataMaxima.Hour,
-                                          DataMaxima.Minute,
-                                          0);
             }
             catch (Exception ex)
             {
