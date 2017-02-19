@@ -12,5 +12,14 @@ namespace CarregaHistoricoCotacoes.Auxiliar
 
             return caminho;
         }
+
+        public static string GerarCaminhoScriptAtivo(int idAtivo, DateTime data)
+        {
+            string caminho = AppDomain.CurrentDomain.BaseDirectory;
+            caminho = Path.Combine(caminho, "scripts", idAtivo.ToString(), data.ToString("yyyyMMdd"));
+            caminho = Path.ChangeExtension(caminho, "sql");
+
+            return caminho;
+        }
     }
 }

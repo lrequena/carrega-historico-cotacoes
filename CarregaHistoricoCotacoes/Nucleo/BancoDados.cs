@@ -22,25 +22,60 @@ namespace CarregaHistoricoCotacoes.Nucleo
 
         internal static void GravarCotacao(int idAtivo, ResultCotacoes result)
         {
-            Log.GravarLinha("Gravando na base");
-
             List<Cotacao> cotacoes = result.result.expirations;
             cotacoes.Reverse();
 
             foreach (Cotacao cotacao in cotacoes)
             {
-                SqlConnection conexao = new SqlConnection(Configuracoes.CadeiaConexao);
-                SqlCommand comando = new SqlCommand($"INSERT INTO COTACAO(IDATIVO, DATA, VALOR) VALUES(@IDATIVO, @DATA, @VALOR)", conexao);
-                comando.Parameters.AddWithValue("@IDATIVO", idAtivo);
-                comando.Parameters.AddWithValue("@DATA", DateTime.ParseExact(cotacao.datetime, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
-                comando.Parameters.AddWithValue("@VALOR", Convert.ToDouble(cotacao.value));
+                DateTime dataRef = DateTime.ParseExact(cotacao.datetime, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                double valorCotacao = Convert.ToDouble(cotacao.value);
 
-                conexao.Open();
+                string sql = string.Empty;
 
-                comando.ExecuteNonQuery();
+                if (Configuracoes.Sobreescrever)
+                {
+                    sql += "IF EXISTS(SELECT 1 FROM COTACAO WHERE IDATIVO = @IDATIVO AND DATA = @DATA)" + Environment.NewLine;
+                    sql += '\t' + "UPDATE COTACAO SET VALOR = @VALOR WHERE IDATIVO = @IDATIVO AND DATA = @DATA";
+                }
+                else
+                {
+                    sql += "IF NOT EXISTS(SELECT 1 FROM COTACAO WHERE IDATIVO = @IDATIVO AND DATA = @DATA)" + Environment.NewLine + '\t';
+                    sql += '\t' + "INSERT INTO COTACAO(IDATIVO, DATA, VALOR) VALUES(@IDATIVO, @DATA, @VALOR)";
+                }
 
-                conexao.Close();
+                if (Configuracoes.GravarBancoDados)
+                {
+                    Log.GravarLinha("Gravando na base");
+
+                    SqlConnection conexao = new SqlConnection(Configuracoes.CadeiaConexao);
+                    SqlCommand comando = new SqlCommand(sql, conexao);
+                    comando.Parameters.AddWithValue("@IDATIVO", idAtivo);
+                    comando.Parameters.AddWithValue("@DATA", dataRef);
+                    comando.Parameters.AddWithValue("@VALOR", valorCotacao);
+                    conexao.Open();
+                    comando.ExecuteNonQuery();
+                    conexao.Close();
+                }
+
+                GravarScript(sql, idAtivo, dataRef, valorCotacao);
             }
+        }
+
+        private static void GravarScript(string sql, int idAtivo, DateTime dataRef, double valorCotacao)
+        {
+            if (!Configuracoes.GravarScript) return;
+
+            Log.GravarLinha("Gravando script");
+
+            sql = sql.Replace("@IDATIVO", idAtivo.ToString());
+            sql = sql.Replace("@DATA", $"'{dataRef.ToString("yyyyMMdd HH:mm:ss")}'");
+            sql = sql.Replace("@VALOR", valorCotacao.ToString("F6", Constantes.CulturaUs));
+
+            sql += Environment.NewLine;
+
+            string script = ArquivoAux.GerarCaminhoScriptAtivo(idAtivo, dataRef);
+
+            Log.GravarSql(script, sql);
         }
     }
 }

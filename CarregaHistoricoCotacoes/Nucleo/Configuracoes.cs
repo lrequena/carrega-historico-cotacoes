@@ -20,8 +20,11 @@ namespace CarregaHistoricoCotacoes.Nucleo
 
         private const string SetorCotacoes = "COTACOES";
 
-        private const string ChaveExibirLog = "exibirlog";
+        private const string ChaveExibirLog = "exibir_log";
+        private const string ChaveGravarScript = "gravar_script";
+        private const string ChaveGravarBancoDados = "gravar_banco_dados";
         private const string ChaveSobreescrever = "sobreescrever";
+        private const string ChaveIncluirOtc = "incluir_otc";
         private const string ChaveDataHoraMinima = "data_hora_min";
         private const string ChaveDataHoraMaxima = "data_hora_max";
         private const string ChaveAtivos = "ativos";
@@ -49,25 +52,35 @@ namespace CarregaHistoricoCotacoes.Nucleo
             }
         }
 
-        public static string Servidor { get; set; }
+        private static string Servidor { get; set; }
 
-        public static bool AutenticacaoWindows { get; set; }
+        private static bool AutenticacaoWindows { get; set; }
 
-        public static string Usuario { get; set; }
+        private static string Usuario { get; set; }
 
-        public static string Senha { get; set; }
+        private static string Senha { get; set; }
 
-        public static string NomeBase { get; set; }
+        private static string NomeBase { get; set; }
 
-        public static bool ExibirLogCotacao { get; set; }
+        public static bool ExibirLogCotacao { get; private set; }
 
-        public static bool Sobreescrever { get; set; }
+        public static bool GravarScript { get; private set; }
 
-        public static DateTime DataMinima { get; set; }
+        public static bool GravarBancoDados { get; private set; }
 
-        public static DateTime DataMaxima { get; set; }
+        public static bool Sobreescrever { get; private set; }
 
-        public static List<int> Ativos { get; set; }
+        /*
+            Período de OTC, considerando horário UTC:
+            Sexta-Feira 22:00 até Domingo 20:59
+        */ 
+        public static bool IncluirOtc { get; private set; }
+
+        public static DateTime DataMinima { get; private set; }
+
+        public static DateTime DataMaxima { get; private set; }
+
+        public static List<int> Ativos { get; private set; }
 
         internal static void CarregaConfiguracoes()
         {
@@ -79,94 +92,34 @@ namespace CarregaHistoricoCotacoes.Nucleo
                 ini.Alias.AddAlias("1", true);
                 ini.Alias.AddAlias("0", false);
 
-                Servidor = ini.Configs[SetorBancoDados].GetString(ChaveServidor);
-                Usuario = ini.Configs[SetorBancoDados].GetString(ChaveUsuario);
-                Senha = ini.Configs[SetorBancoDados].GetString(ChaveSenha);
-                NomeBase = ini.Configs[SetorBancoDados].GetString(ChaveNomeBase);
+                Servidor = ObterConfiguracao<string>(ini, SetorBancoDados, ChaveServidor);
+                AutenticacaoWindows = ObterConfiguracao<bool>(ini, SetorBancoDados, ChaveAutenticacaoWindows);
+                Usuario = ObterConfiguracao<string>(ini, SetorBancoDados, ChaveUsuario);
+                Senha = ObterConfiguracao<string>(ini, SetorBancoDados, ChaveSenha);
+                NomeBase = ObterConfiguracao<string>(ini, SetorBancoDados, ChaveNomeBase);
+                ExibirLogCotacao = ObterConfiguracao<bool>(ini, SetorCotacoes, ChaveExibirLog);
+                GravarScript = ObterConfiguracao<bool>(ini, SetorCotacoes, ChaveGravarScript);
+                GravarBancoDados = ObterConfiguracao<bool>(ini, SetorCotacoes, ChaveGravarBancoDados);
+                Sobreescrever = ObterConfiguracao<bool>(ini, SetorCotacoes, ChaveSobreescrever);
+                IncluirOtc = ObterConfiguracao<bool>(ini, SetorCotacoes, ChaveIncluirOtc);
+                Ativos = ObterConfiguracao<List<int>>(ini, SetorCotacoes, ChaveAtivos);
 
-                try
-                {
-                    AutenticacaoWindows = ini.Configs[SetorBancoDados].GetBoolean(ChaveAutenticacaoWindows);
-                }
-                catch (ArgumentException)
-                {
-                    throw new Exception($"Erro de conversão do valor da chave de configuração '{ChaveAutenticacaoWindows}' de string para Boolean.");
-                }
+                DataMinima = ObterConfiguracao<DateTime>(ini, SetorCotacoes, ChaveDataHoraMinima);
+                DataMinima = new DateTime(DataMinima.Year,
+                                             DataMinima.Month,
+                                             DataMinima.Day,
+                                             DataMinima.Hour,
+                                             DataMinima.Minute,
+                                             0);
 
-                try
-                {
-                    ExibirLogCotacao = ini.Configs[SetorCotacoes].GetBoolean(ChaveExibirLog);
-                }
-                catch (ArgumentException)
-                {
-                    throw new Exception($"Erro de conversão do valor da chave de configuração '{ChaveExibirLog}' de string para Boolean.");
-                }
-
-                try
-                {
-                    Sobreescrever = ini.Configs[SetorCotacoes].GetBoolean(ChaveSobreescrever);
-                }
-                catch (ArgumentException)
-                {
-                    throw new Exception($"Erro de conversão do valor da chave de configuração '{ChaveSobreescrever}' de string para Boolean.");
-                }
-
-                try
-                {
-                    string dataMin = ini.Configs[SetorCotacoes].GetString(ChaveDataHoraMinima);
-
-                    if (string.IsNullOrWhiteSpace(dataMin))
-                        throw new Exception();
-
-                    DataMinima = Convert.ToDateTime(dataMin, Constantes.CulturaBr);
-                    DataMinima = new DateTime(DataMinima.Year,
-                                              DataMinima.Month,
-                                              DataMinima.Day,
-                                              DataMinima.Hour,
-                                              DataMinima.Minute,
-                                              0);
-                }
-                catch (Exception)
-                {
-                    throw new Exception($"Erro de conversão do valor da chave de configuração '{ChaveDataHoraMinima}' de string para DateTime.");
-                }
-
-                try
-                {
-                    string dataMax = ini.Configs[SetorCotacoes].GetString(ChaveDataHoraMaxima);
-
-                    if (string.IsNullOrWhiteSpace(dataMax))
-                        throw new Exception();
-
-                    DataMaxima = Convert.ToDateTime(dataMax, Constantes.CulturaBr);
-                    DataMaxima = new DateTime(Math.Min(DateTime.Now.Ticks, DataMaxima.Ticks));
-                    DataMaxima = new DateTime(DataMaxima.Year,
-                                              DataMaxima.Month,
-                                              DataMaxima.Day,
-                                              DataMaxima.Hour,
-                                              DataMaxima.Minute,
-                                              0);
-                }
-                catch (Exception)
-                {
-                    throw new Exception($"Erro de conversão do valor da chave de configuração '{ChaveDataHoraMaxima}' de string para DateTime.");
-                }
-
-                try
-                {
-                    string ativos = ini.Configs[SetorCotacoes].GetString(ChaveAtivos);
-
-                    if (string.IsNullOrWhiteSpace(ativos))
-                        throw new Exception();
-
-                    string[] valores = ativos.Split(',');
-
-                    Ativos = valores.Where(v => !string.IsNullOrWhiteSpace(v)).Select(val => Convert.ToInt32(val.Trim())).ToList();
-                }
-                catch (Exception)
-                {
-                    throw new Exception($"Erro de conversão do valor da chave de configuração '{ChaveAtivos}' de string para List<int>.");
-                }
+                DataMaxima = ObterConfiguracao<DateTime>(ini, SetorCotacoes, ChaveDataHoraMaxima);
+                DataMaxima = new DateTime(Math.Min(DateTime.UtcNow.Ticks, DataMaxima.Ticks));
+                DataMaxima = new DateTime(DataMaxima.Year,
+                                          DataMaxima.Month,
+                                          DataMaxima.Day,
+                                          DataMaxima.Hour,
+                                          DataMaxima.Minute,
+                                          0);
             }
             catch (Exception ex)
             {
@@ -196,6 +149,91 @@ namespace CarregaHistoricoCotacoes.Nucleo
             }
 
             Log.GravarLinha("Configurações carregadas com sucesso");
+        }
+
+        private static T ObterConfiguracao<T>(IConfigSource ini, string setor, string chave)
+        {
+            // Tratamento para string
+            if (typeof(T) == typeof(string))
+            {
+                try
+                {
+                    string valor = ini.Configs[setor].GetString(chave);
+
+                    return (T)Convert.ChangeType(valor, typeof(T));
+                }
+                catch (InvalidCastException)
+                {
+                    throw new Exception($"Erro de conversão genérica do valor da chave de configuração '{chave}' para String.");
+                }
+            }
+
+            // Tratamento para bool
+            if (typeof(T) == typeof(bool))
+            {
+                try
+                {
+                    bool valor;
+
+                    try
+                    {
+                        valor = ini.Configs[setor].GetBoolean(chave);
+                    }
+                    catch (ArgumentException)
+                    {
+                        throw new Exception(
+                            $"Erro de conversão do valor da chave de configuração '{chave}' de string para Boolean.");
+                    }
+
+                    return (T)Convert.ChangeType(valor, typeof(T));
+                }
+                catch (InvalidCastException)
+                {
+                    throw new Exception($"Erro de conversão genérica do valor da chave de configuração '{chave}' para Boolean.");
+                }
+            }
+
+            // Tratamento para DateTime
+            if (typeof(T) == typeof(DateTime))
+            {
+                try
+                {
+                    string valor = ini.Configs[setor].GetString(chave);
+
+                    if (string.IsNullOrWhiteSpace(valor))
+                        throw new ArgumentException();
+
+                    return (T)Convert.ChangeType(Convert.ToDateTime(valor, Constantes.CulturaBr), typeof(T));
+                }
+                catch (InvalidCastException)
+                {
+                    throw new Exception($"Erro de conversão genérica do valor da chave de configuração '{chave}' para DateTime.");
+                }
+            }
+
+            // Tratamento para List<int>
+            if (typeof(T) == typeof(List<int>))
+            {
+                try
+                {
+                    string valor = ini.Configs[setor].GetString(chave);
+
+                    if (string.IsNullOrWhiteSpace(valor))
+                        throw new ArgumentException();
+
+                    string[] valores = valor.Split(',');
+
+                    List<int> lista = valores.Where(v => !string.IsNullOrWhiteSpace(v)).Select(val => Convert.ToInt32(val.Trim())).ToList();
+
+                    return (T)Convert.ChangeType(lista, typeof(T));
+                }
+                catch (InvalidCastException)
+                {
+                    throw new Exception($"Erro de conversão genérica do valor da chave de configuração '{chave}' para List<int>.");
+                }
+            }
+
+            throw new ArgumentException($"Sem tratamento genérico para o tipo {typeof(T)}.");
         }
     }
 }

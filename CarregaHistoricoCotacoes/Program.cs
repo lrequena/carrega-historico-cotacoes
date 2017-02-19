@@ -31,7 +31,16 @@ namespace CarregaHistoricoCotacoes
 
             while (dataAtual >= dataCorte)
             {
-                string processando = $"Consultando: {dataAtual.ToString("dd-MM-yyyy")}";
+                if (!Configuracoes.IncluirOtc)
+                {
+                    while (Cotacao.EhOtc(dataAtual))
+                    {
+                        Log.GravarLinha("Ignorando período OTC: " + dataAtual.ToString("dd-MM-yyyy HH:mm") + " (UTC)");
+                        dataAtual = dataAtual.AddMinutes(-1);
+                    }
+                }
+
+                string processando = $"Consultando: {dataAtual.ToString("dd-MM-yyyy")} UTC";
                 processando += $" - Hora: {dataAtual.ToString("HH")}";
                 processando += " - Minuto: ";
 
@@ -65,7 +74,7 @@ namespace CarregaHistoricoCotacoes
 
                     BancoDados.GravarCotacao(idAtivo, result);
                 }
-                
+
                 dataAtual = dataAtual.Minute == 17 ? dataAtual.AddMinutes(-17) : dataAtual.AddMinutes(-1);
             }
         }

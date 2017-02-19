@@ -21,6 +21,9 @@ namespace CarregaHistoricoCotacoes.Auxiliar
 
             _primeiraGravacao = false;
 
+            FileInfo fi = new FileInfo(CaminhoLog);
+            if (fi.DirectoryName != null) Directory.CreateDirectory(fi.DirectoryName);
+
             using (StreamWriter sw = new StreamWriter(CaminhoLog, false, Encoding.GetEncoding(1252)))
             {
                 sw.Flush();
@@ -71,6 +74,18 @@ namespace CarregaHistoricoCotacoes.Auxiliar
 
             if (console)
                 Console.WriteLine(timestamp + mensagem);
+        }
+
+        public static void GravarSql(string arquivo, string sql)
+        {
+            FileInfo fi = new FileInfo(arquivo);
+            if (fi.DirectoryName != null) Directory.CreateDirectory(fi.DirectoryName);
+
+            using (StreamWriter sw = new StreamWriter(arquivo, true, Encoding.GetEncoding(1252)))
+            {
+                sw.WriteLine(sql);
+                sw.Flush();
+            }
         }
     }
 }

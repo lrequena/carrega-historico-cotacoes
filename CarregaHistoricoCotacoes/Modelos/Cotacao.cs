@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace HistoricoCotacao.Modelos
 {
@@ -9,6 +10,24 @@ namespace HistoricoCotacao.Modelos
         public double value { get; set; }
         public double bid { get; set; }
         public double ask { get; set; }
+
+        /*
+            Período de OTC, considerando horário UTC:
+            Sexta-Feira 22:00 até Domingo 20:59
+        */
+        internal static bool EhOtc(DateTime dataRef)
+        {
+            if (dataRef.DayOfWeek == DayOfWeek.Saturday)
+                return true;
+
+            if (dataRef.DayOfWeek == DayOfWeek.Friday && dataRef.Hour >= 22)
+                return true;
+
+            if (dataRef.DayOfWeek == DayOfWeek.Sunday && dataRef.Hour < 21)
+                return true;
+
+            return false;
+        }
 
         internal static string ConverterCotacao(int id)
         {
